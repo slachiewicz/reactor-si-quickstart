@@ -49,8 +49,8 @@ public class ReactorConfig {
 	@Bean
 	public AsyncTaskExecutor workQueueTaskExecutor(Environment env) {
 		return new WorkQueueAsyncTaskExecutor(env)
-				.setBacklog(4096)
-				.setThreads(4);
+				.setBacklog(2048)
+				.setThreads(8);
 	}
 
 	/**
@@ -65,7 +65,7 @@ public class ReactorConfig {
 	@Bean
 	public AsyncTaskExecutor ringBufferTaskExecutor(Environment env) {
 		return new RingBufferAsyncTaskExecutor(env)
-				.setBacklog(16384);
+				.setBacklog(4096);
 	}
 
 }

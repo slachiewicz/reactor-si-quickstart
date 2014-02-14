@@ -65,7 +65,11 @@ public class LoadTestClient {
 
 				FileChannel data = FileChannel.open(Paths.get("src/main/resources/data.bin"));
 				long size = data.size();
+
+				long start = System.currentTimeMillis();
 				data.transferTo(0, size, client);
+				long end = System.currentTimeMillis();
+				System.out.println("data sent to localhost:" + port + " in " + (end - start) + "ms");
 
 				client.close();
 			} catch(IOException e) {

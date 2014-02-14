@@ -4,12 +4,14 @@ import org.projectreactor.qs.service.MessageCountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportResource;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.integration.config.ConsumerEndpointFactoryBean;
 import org.springframework.integration.ip.tcp.TcpReceivingChannelAdapter;
 import org.springframework.integration.ip.tcp.connection.*;
@@ -43,9 +45,6 @@ public class SpringIntegrationConfig {
 	private int    tcpPort;
 	@Value("${reactor.dispatcher:ringBuffer}")
 	private String dispatcher;
-
-	@Autowired
-	private MessageCountService msgCnt;
 
 	/**
 	 * Count up messages as they come through the channel.
@@ -92,13 +91,13 @@ public class SpringIntegrationConfig {
 		                                                                          dispatcher);
 
 		Codec delegateCodec = StandardCodecs.BYTE_ARRAY_CODEC;
-//		Codec delegateCodec = new PassThroughCodec<Buffer>() {
-//			@Override
-//			protected Buffer beforeAccept(Buffer b) {
-//				// pretend like we did something with the data
-//				return b.skip(b.remaining());
-//			}
-//		};
+		//		Codec delegateCodec = new PassThroughCodec<Buffer>() {
+		//			@Override
+		//			protected Buffer beforeAccept(Buffer b) {
+		//				// pretend like we did something with the data
+		//				return b.skip(b.remaining());
+		//			}
+		//		};
 		Codec codec = new LengthFieldCodec(delegateCodec);
 
 		return tcp.setOutput(output)
@@ -112,54 +111,26 @@ public class SpringIntegrationConfig {
 
 	@Bean
 	@Profile("si")
-	public TcpReceivingChannelAdapter siTcpChannelAdapter(MessageChannel output) {
+	public TcpReceivingChannelAdapter siTcpChannelAdapter(MessageChannel output,
+	                                                      AbstractConnectionFactory siTcpConnectionFactory) {
 		TcpReceivingChannelAdapter adapter = new TcpReceivingChannelAdapter();
 		adapter.setOutputChannel(output);
-		adapter.setConnectionFactory(siTcpConnectionFactory());
+		adapter.setConnectionFactory(siTcpConnectionFactory);
 		return adapter;
 	}
 
 	@Bean
 	@Profile("si")
-	public AbstractConnectionFactory siTcpConnectionFactory() {
-		//TcpNioServerConnectionFactory connectionFactory = new TcpNioServerConnectionFactory(tcpPort);
-		//connectionFactory.setTaskExecutor(Executors.newFixedThreadPool(100));
+	public AbstractConnectionFactory siTcpConnectionFactory(
+			@Qualifier("threadPoolTaskExecutor") TaskExecutor taskExecutor
+	) {
 		TcpNetServerConnectionFactory connectionFactory = new TcpNetServerConnectionFactory(tcpPort);
+		connectionFactory.setTaskExecutor(taskExecutor);
 		connectionFactory.setLookupHost(false);
 		ByteArrayLengthHeaderSerializer deserializer = new ByteArrayLengthHeaderSkippingSerializer();
 		deserializer.setMaxMessageSize(3000);
 		connectionFactory.setDeserializer(deserializer);
 		return connectionFactory;
-	}
-
-	@Bean
-	@Profile("si")
-	public ApplicationListener<TcpConnectionEvent> siTcpStopWatchListener() {
-		return new ApplicationListener<TcpConnectionEvent>() {
-
-			private final Logger log = LoggerFactory.getLogger(getClass());
-
-			private final Map<Object, StopWatch> stopWatches = new ConcurrentHashMap<>();
-
-			private final Map<Object, Integer> startCounts = new ConcurrentHashMap<>();
-
-			@Override
-			public void onApplicationEvent(TcpConnectionEvent event) {
-				if(event instanceof TcpConnectionOpenEvent) {
-					StopWatch stopWatch = new StopWatch();
-					stopWatches.put(event.getSource(), stopWatch);
-					stopWatch.start();
-					startCounts.put(event.getSource(), msgCnt.getCount());
-				} else if(event instanceof TcpConnectionCloseEvent) {
-					stopWatches.get(event.getSource()).stop();
-					int endCount = (msgCnt.getCount() - startCounts.remove(event.getSource()));
-					long time = stopWatches.get(event.getSource()).getLastTaskTimeMillis();
-					// TODO keep count per socket, currently only works with 1
-					log.info("throughput this session: {}/sec in {}ms",
-					         (int)((endCount * 1000) / time), time);
-				}
-			}
-		};
 	}
 
 }

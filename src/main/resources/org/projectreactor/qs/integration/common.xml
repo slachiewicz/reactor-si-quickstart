@@ -10,7 +10,7 @@
              http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task.xsd">
 
 	<!-- A single, shared TaskExecutor analogous to that coming from Reactor -->
-	<task:executor id="threadPoolTaskExecutor" pool-size="4"/>
+	<task:executor id="threadPoolTaskExecutor" pool-size="8"/>
 
 	<!-- output channel that all components publish incoming messages to -->
 	<channel id="output">
