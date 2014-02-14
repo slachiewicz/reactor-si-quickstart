@@ -1,8 +1,6 @@
 package org.projectreactor.qs.integration;
 
 import org.projectreactor.qs.service.MessageCountService;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -19,17 +17,14 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessagingException;
-
 import reactor.core.Environment;
-import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
 import reactor.io.encoding.LengthFieldCodec;
-import reactor.io.encoding.PassThroughCodec;
 import reactor.io.encoding.StandardCodecs;
 import reactor.tcp.config.ServerSocketOptions;
 
 /**
- * JavaConfig that merges external, XML-based Spring Integration components with Reactor SI compoments.
+ * JavaConfig that merges external, XML-based Spring Integration components with Reactor SI components.
  *
  * @author Jon Brisbin
  */
@@ -87,13 +82,6 @@ public class SpringIntegrationConfig {
 		                                                                          dispatcher);
 
 		Codec delegateCodec = StandardCodecs.BYTE_ARRAY_CODEC;
-		//		Codec delegateCodec = new PassThroughCodec<Buffer>() {
-		//			@Override
-		//			protected Buffer beforeAccept(Buffer b) {
-		//				// pretend like we did something with the data
-		//				return b.skip(b.remaining());
-		//			}
-		//		};
 		Codec codec = new LengthFieldCodec(delegateCodec);
 
 		return tcp.setOutput(output)
@@ -123,7 +111,7 @@ public class SpringIntegrationConfig {
 		TcpNetServerConnectionFactory connectionFactory = new TcpNetServerConnectionFactory(tcpPort);
 		connectionFactory.setTaskExecutor(taskExecutor);
 		connectionFactory.setLookupHost(false);
-		ByteArrayLengthHeaderSerializer deserializer = new ByteArrayLengthHeaderSkippingSerializer();
+		ByteArrayLengthHeaderSerializer deserializer = new ByteArrayLengthHeaderSerializer();
 		deserializer.setMaxMessageSize(3000);
 		connectionFactory.setDeserializer(deserializer);
 		return connectionFactory;
