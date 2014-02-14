@@ -1,12 +1,10 @@
 package org.projectreactor.qs.integration;
 
 import org.projectreactor.qs.service.MessageCountService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ImportResource;
@@ -14,13 +12,14 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.integration.config.ConsumerEndpointFactoryBean;
 import org.springframework.integration.ip.tcp.TcpReceivingChannelAdapter;
-import org.springframework.integration.ip.tcp.connection.*;
+import org.springframework.integration.ip.tcp.connection.AbstractConnectionFactory;
+import org.springframework.integration.ip.tcp.connection.TcpNetServerConnectionFactory;
 import org.springframework.integration.ip.tcp.serializer.ByteArrayLengthHeaderSerializer;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessagingException;
-import org.springframework.util.StopWatch;
+
 import reactor.core.Environment;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -28,9 +27,6 @@ import reactor.io.encoding.LengthFieldCodec;
 import reactor.io.encoding.PassThroughCodec;
 import reactor.io.encoding.StandardCodecs;
 import reactor.tcp.config.ServerSocketOptions;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * JavaConfig that merges external, XML-based Spring Integration components with Reactor SI compoments.
