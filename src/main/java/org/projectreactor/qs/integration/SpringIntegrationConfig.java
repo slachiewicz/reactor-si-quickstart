@@ -1,31 +1,28 @@
 package org.projectreactor.qs.integration;
 
 import org.projectreactor.qs.service.MessageCountService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.ImportResource;
 import org.springframework.context.annotation.Profile;
 import org.springframework.integration.config.ConsumerEndpointFactoryBean;
 import org.springframework.integration.ip.tcp.TcpReceivingChannelAdapter;
-import org.springframework.integration.ip.tcp.connection.*;
+import org.springframework.integration.ip.tcp.connection.AbstractConnectionFactory;
+import org.springframework.integration.ip.tcp.connection.TcpNetServerConnectionFactory;
 import org.springframework.integration.ip.tcp.serializer.ByteArrayLengthHeaderSerializer;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessagingException;
-import org.springframework.util.StopWatch;
+
 import reactor.core.Environment;
 import reactor.io.Buffer;
 import reactor.io.encoding.LengthFieldCodec;
 import reactor.io.encoding.PassThroughCodec;
 import reactor.tcp.config.ServerSocketOptions;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * JavaConfig that merges external, XML-based Spring Integration components with Reactor SI compoments.
@@ -33,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Jon Brisbin
  */
 @Configuration
+@ImportResource("org/projectreactor/qs/integration/common.xml")
 public class SpringIntegrationConfig {
 
 	@Value("${reactor.port:3000}")
@@ -120,32 +118,6 @@ public class SpringIntegrationConfig {
 		deserializer.setMaxMessageSize(3000);
 		connectionFactory.setDeserializer(deserializer);
 		return connectionFactory;
-	}
-
-	@Bean
-	@Profile("si")
-	public ApplicationListener<TcpConnectionEvent> siTcpStopWatchListener() {
-		return new ApplicationListener<TcpConnectionEvent>() {
-
-			private final Logger log = LoggerFactory.getLogger(getClass());
-
-			private final Map<Object, StopWatch> stopWatches = new ConcurrentHashMap<>();
-
-			@Override
-			public void onApplicationEvent(TcpConnectionEvent event) {
-				if(event instanceof TcpConnectionOpenEvent) {
-					StopWatch stopWatch = new StopWatch();
-					stopWatches.put(event.getSource(), stopWatch);
-					stopWatch.start();
-				} else if(event instanceof TcpConnectionCloseEvent) {
-					stopWatches.get(event.getSource()).stop();
-					long time = stopWatches.get(event.getSource()).getLastTaskTimeMillis();
-					// TODO keep count per socket, currently only works with 1
-					log.info("throughput this session: {}/sec in {}ms",
-					         (int)((msgCnt.getCount() * 1000) / time), time);
-				}
-			}
-		};
 	}
 
 }
