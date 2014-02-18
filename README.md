@@ -17,6 +17,8 @@ There is a class in the tests called `WriteLengthFieldDataFileApp` which will wr
 
 ### Running
 
+__NOTE:__ *If using Java 8, you must be running with ea build 128 or later. Earlier builds may or may not work.*
+
 To run the Spring Integration components, fire up the app using the the `QuickStartApplication` class' Java main method, or by running it from the command line `mvn spring-boot:run`.
 
 Requires __-Dspring.profiles.active=reactor__ or __-Dspring.profiles.active=si__ to run with reactor or native SI TCP adapters respectively.
