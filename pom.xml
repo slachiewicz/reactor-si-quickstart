@@ -57,7 +57,7 @@
 		</dependency>
 		<dependency>
 			<groupId>org.projectreactor</groupId>
-			<artifactId>reactor-tcp</artifactId>
+			<artifactId>reactor-net</artifactId>
 			<version>${reactor.version}</version>
 		</dependency>
 

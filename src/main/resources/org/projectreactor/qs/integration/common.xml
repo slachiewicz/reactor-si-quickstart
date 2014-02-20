@@ -14,7 +14,7 @@
 
 	<!-- output channel that all components publish incoming messages to -->
 	<channel id="output">
-		<!--dispatcher task-executor="ringBufferTaskExecutor"/-->
+		<dispatcher task-executor="ringBufferTaskExecutor"/>
 		<!--dispatcher task-executor="workQueueTaskExecutor"/-->
 		<!--dispatcher task-executor="threadPoolTaskExecutor"/-->
 	</channel>

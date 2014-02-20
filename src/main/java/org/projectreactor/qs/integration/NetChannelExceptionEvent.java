@@ -7,8 +7,8 @@ import org.springframework.context.ApplicationEvent;
  *
  * @author Jon Brisbin
  */
-public class TcpConnectionExceptionEvent extends ApplicationEvent {
-	public TcpConnectionExceptionEvent(Throwable ex) {
+public class NetChannelExceptionEvent extends ApplicationEvent {
+	public NetChannelExceptionEvent(Throwable ex) {
 		super(ex);
 	}
 

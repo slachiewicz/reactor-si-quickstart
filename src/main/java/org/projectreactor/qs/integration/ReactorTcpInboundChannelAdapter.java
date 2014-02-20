@@ -6,19 +6,21 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.integration.endpoint.MessageProducerSupport;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.util.Assert;
 import org.springframework.util.StopWatch;
 import reactor.core.Environment;
+import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
-import reactor.tcp.TcpConnection;
-import reactor.tcp.TcpServer;
-import reactor.tcp.config.ServerSocketOptions;
-import reactor.tcp.config.SslOptions;
-import reactor.tcp.netty.NettyTcpServer;
-import reactor.tcp.spec.TcpServerSpec;
+import reactor.net.NetChannel;
+import reactor.net.config.ServerSocketOptions;
+import reactor.net.config.SslOptions;
+import reactor.net.netty.tcp.NettyTcpServer;
+import reactor.net.tcp.TcpServer;
+import reactor.net.tcp.spec.TcpServerSpec;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -34,22 +36,25 @@ public class ReactorTcpInboundChannelAdapter<IN, OUT>
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final    TcpServerSpec<IN, OUT>    spec;
-	private volatile TcpServer<IN, OUT>        server;
-	private volatile ApplicationEventPublisher eventPublisher;
+	private final MessageHandler            messageHandler;
+	private final TcpServerSpec<IN, OUT>    spec;
+	private       TcpServer<IN, OUT>        server;
+	private       ApplicationEventPublisher eventPublisher;
 
 	public ReactorTcpInboundChannelAdapter(Environment env,
 	                                       int listenPort,
-	                                       String dispatcher) {
+	                                       String dispatcher,
+	                                       final MessageHandler messageHandler) {
+		this.messageHandler = messageHandler;
 		Assert.notNull(env, "Environment cannot be null.");
 
 		this.spec = new TcpServerSpec<IN, OUT>(NettyTcpServer.class)
 				.env(env)
-				.dispatcher(dispatcher)
+				.dispatcher(new SynchronousDispatcher())
 				.listen(listenPort)
-				.consume(new Consumer<TcpConnection<IN, OUT>>() {
+				.consume(new Consumer<NetChannel<IN, OUT>>() {
 					@Override
-					public void accept(TcpConnection<IN, OUT> conn) {
+					public void accept(NetChannel<IN, OUT> conn) {
 						final AtomicLong msgCnt = new AtomicLong();
 						final StopWatch stopWatch = new StopWatch();
 						stopWatch.start();
@@ -58,14 +63,14 @@ public class ReactorTcpInboundChannelAdapter<IN, OUT>
 									@Override
 									public void accept(Throwable t) {
 										if(null != eventPublisher) {
-											eventPublisher.publishEvent(new TcpConnectionExceptionEvent(t));
+											eventPublisher.publishEvent(new NetChannelExceptionEvent(t));
 										}
 									}
 								})
 								.consume(new Consumer<IN>() {
 									@Override
 									public void accept(IN in) {
-										sendMessage(new GenericMessage<>(in));
+										messageHandler.handleMessage(new GenericMessage<>(in));
 										msgCnt.incrementAndGet();
 									}
 								})
@@ -103,7 +108,7 @@ public class ReactorTcpInboundChannelAdapter<IN, OUT>
 	}
 
 	/**
-	 * Set the {@link reactor.tcp.config.ServerSocketOptions} to use.
+	 * Set the {@link ServerSocketOptions} to use.
 	 *
 	 * @param options
 	 * 		the options to use
@@ -116,7 +121,7 @@ public class ReactorTcpInboundChannelAdapter<IN, OUT>
 	}
 
 	/**
-	 * Set the {@link reactor.tcp.config.SslOptions} to use.
+	 * Set the {@link SslOptions} to use.
 	 *
 	 * @param sslOptions
 	 * 		the options to use
@@ -143,7 +148,7 @@ public class ReactorTcpInboundChannelAdapter<IN, OUT>
 
 	@Override
 	protected void doStart() {
-		server = spec.get().start();
+		server = spec.get().start(null);
 	}
 
 	@Override

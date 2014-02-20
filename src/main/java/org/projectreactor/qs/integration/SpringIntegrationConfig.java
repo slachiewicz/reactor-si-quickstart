@@ -21,7 +21,7 @@ import reactor.core.Environment;
 import reactor.io.encoding.Codec;
 import reactor.io.encoding.LengthFieldCodec;
 import reactor.io.encoding.StandardCodecs;
-import reactor.tcp.config.ServerSocketOptions;
+import reactor.net.config.ServerSocketOptions;
 
 /**
  * JavaConfig that merges external, XML-based Spring Integration components with Reactor SI components.
@@ -37,10 +37,20 @@ public class SpringIntegrationConfig {
 	@Value("${reactor.dispatcher:ringBuffer}")
 	private String dispatcher;
 
+	@Bean
+	public MessageHandler messageHandler(final MessageCountService msgCnt) {
+		return new MessageHandler() {
+			@Override
+			public void handleMessage(Message<?> msg) throws MessagingException {
+				msgCnt.increment();
+			}
+		};
+	}
+
 	/**
 	 * Count up messages as they come through the channel.
 	 *
-	 * @param msgCnt
+	 * @param messageHandler
 	 * 		the counter service
 	 * @param output
 	 * 		the output channel
@@ -48,16 +58,11 @@ public class SpringIntegrationConfig {
 	 * @return new {@link org.springframework.integration.config.ConsumerEndpointFactoryBean}
 	 */
 	@Bean
-	public ConsumerEndpointFactoryBean messageCounterEndpoint(final MessageCountService msgCnt,
+	public ConsumerEndpointFactoryBean messageCounterEndpoint(MessageHandler messageHandler,
 	                                                          MessageChannel output) {
 		ConsumerEndpointFactoryBean factoryBean = new ConsumerEndpointFactoryBean();
 		factoryBean.setInputChannel(output);
-		factoryBean.setHandler(new MessageHandler() {
-			@Override
-			public void handleMessage(Message<?> msg) throws MessagingException {
-				msgCnt.increment();
-			}
-		});
+		factoryBean.setHandler(messageHandler);
 		return factoryBean;
 	}
 
@@ -76,10 +81,12 @@ public class SpringIntegrationConfig {
 	@Bean
 	@Profile("reactor")
 	public ReactorTcpInboundChannelAdapter reactorTcpChannelAdapter(Environment env,
+	                                                                MessageHandler messageHandler,
 	                                                                MessageChannel output) {
 		ReactorTcpInboundChannelAdapter tcp = new ReactorTcpInboundChannelAdapter(env,
 		                                                                          tcpPort,
-		                                                                          dispatcher);
+		                                                                          dispatcher,
+		                                                                          messageHandler);
 
 		Codec delegateCodec = StandardCodecs.BYTE_ARRAY_CODEC;
 		Codec codec = new LengthFieldCodec(delegateCodec);
