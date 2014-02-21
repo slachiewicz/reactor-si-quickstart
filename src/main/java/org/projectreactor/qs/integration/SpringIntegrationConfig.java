@@ -1,6 +1,7 @@
 package org.projectreactor.qs.integration;
 
 import org.projectreactor.qs.service.MessageCountService;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +18,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.MessagingException;
+
 import reactor.core.Environment;
 import reactor.io.encoding.Codec;
 import reactor.io.encoding.LengthFieldCodec;
@@ -27,6 +29,7 @@ import reactor.net.config.ServerSocketOptions;
  * JavaConfig that merges external, XML-based Spring Integration components with Reactor SI components.
  *
  * @author Jon Brisbin
+ * @author Mark Fisher
  */
 @Configuration
 @ImportResource("org/projectreactor/qs/integration/common.xml")
@@ -34,8 +37,6 @@ public class SpringIntegrationConfig {
 
 	@Value("${reactor.port:3000}")
 	private int    tcpPort;
-	@Value("${reactor.dispatcher:ringBuffer}")
-	private String dispatcher;
 
 	@Bean
 	public MessageHandler messageHandler(final MessageCountService msgCnt) {
@@ -45,25 +46,6 @@ public class SpringIntegrationConfig {
 				msgCnt.increment();
 			}
 		};
-	}
-
-	/**
-	 * Count up messages as they come through the channel.
-	 *
-	 * @param messageHandler
-	 * 		the counter service
-	 * @param output
-	 * 		the output channel
-	 *
-	 * @return new {@link org.springframework.integration.config.ConsumerEndpointFactoryBean}
-	 */
-	@Bean
-	public ConsumerEndpointFactoryBean messageCounterEndpoint(MessageHandler messageHandler,
-	                                                          MessageChannel output) {
-		ConsumerEndpointFactoryBean factoryBean = new ConsumerEndpointFactoryBean();
-		factoryBean.setInputChannel(output);
-		factoryBean.setHandler(messageHandler);
-		return factoryBean;
 	}
 
 	/**
@@ -84,9 +66,7 @@ public class SpringIntegrationConfig {
 	                                                                MessageHandler messageHandler,
 	                                                                MessageChannel output) {
 		ReactorTcpInboundChannelAdapter tcp = new ReactorTcpInboundChannelAdapter(env,
-		                                                                          tcpPort,
-		                                                                          dispatcher,
-		                                                                          messageHandler);
+		                                                                          tcpPort);
 
 		Codec delegateCodec = StandardCodecs.BYTE_ARRAY_CODEC;
 		Codec codec = new LengthFieldCodec(delegateCodec);
@@ -122,6 +102,30 @@ public class SpringIntegrationConfig {
 		deserializer.setMaxMessageSize(3000);
 		connectionFactory.setDeserializer(deserializer);
 		return connectionFactory;
+	}
+
+	@Configuration
+	@Profile("si")
+	static class SiConfig {
+		/**
+		 * Count up messages as they come through the channel.
+		 *
+		 * @param messageHandler
+		 * 		the counter service
+		 * @param output
+		 * 		the output channel
+		 *
+		 * @return new {@link org.springframework.integration.config.ConsumerEndpointFactoryBean}
+		 */
+		@Bean
+		@Profile({"!channel.simple"})
+		public ConsumerEndpointFactoryBean messageCounterEndpoint(MessageHandler messageHandler,
+		                                                          MessageChannel output) {
+			ConsumerEndpointFactoryBean factoryBean = new ConsumerEndpointFactoryBean();
+			factoryBean.setInputChannel(output);
+			factoryBean.setHandler(messageHandler);
+			return factoryBean;
+		}
 	}
 
 }

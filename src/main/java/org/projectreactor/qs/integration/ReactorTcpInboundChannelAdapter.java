@@ -1,17 +1,20 @@
 package org.projectreactor.qs.integration;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.integration.endpoint.MessageProducerSupport;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.MessageHandler;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.util.Assert;
 import org.springframework.util.StopWatch;
+
 import reactor.core.Environment;
-import reactor.event.dispatch.SynchronousDispatcher;
 import reactor.function.Consumer;
 import reactor.io.Buffer;
 import reactor.io.encoding.Codec;
@@ -22,35 +25,27 @@ import reactor.net.netty.tcp.NettyTcpServer;
 import reactor.net.tcp.TcpServer;
 import reactor.net.tcp.spec.TcpServerSpec;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * A Spring Integration {@literal InboundChannelAdapter} that ingest incoming TCP data using Reactor's Netty-based TCP
  * support.
  *
  * @author Jon Brisbin
+ * @author Mark Fisher
  */
-public class ReactorTcpInboundChannelAdapter<IN, OUT>
-		extends MessageProducerSupport
-		implements ApplicationEventPublisherAware {
+public class ReactorTcpInboundChannelAdapter<IN, OUT> extends MessageProducerSupport {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final MessageHandler            messageHandler;
 	private final TcpServerSpec<IN, OUT>    spec;
 	private       TcpServer<IN, OUT>        server;
 	private       ApplicationEventPublisher eventPublisher;
+	private       String                    dispatcher;
 
-	public ReactorTcpInboundChannelAdapter(Environment env,
-	                                       int listenPort,
-	                                       String dispatcher,
-	                                       final MessageHandler messageHandler) {
-		this.messageHandler = messageHandler;
+	public ReactorTcpInboundChannelAdapter(Environment env, int listenPort) {
 		Assert.notNull(env, "Environment cannot be null.");
-
 		this.spec = new TcpServerSpec<IN, OUT>(NettyTcpServer.class)
 				.env(env)
-				.dispatcher(new SynchronousDispatcher())
+				.dispatcher(dispatcher == null ? "sync" : dispatcher)
 				.listen(listenPort)
 				.consume(new Consumer<NetChannel<IN, OUT>>() {
 					@Override
@@ -70,7 +65,7 @@ public class ReactorTcpInboundChannelAdapter<IN, OUT>
 								.consume(new Consumer<IN>() {
 									@Override
 									public void accept(IN in) {
-										messageHandler.handleMessage(new GenericMessage<>(in));
+										sendMessage(new GenericMessage<>(in));
 										msgCnt.incrementAndGet();
 									}
 								})
@@ -90,8 +85,15 @@ public class ReactorTcpInboundChannelAdapter<IN, OUT>
 	}
 
 	@Override
-	public void setApplicationEventPublisher(ApplicationEventPublisher eventPublisher) {
-		this.eventPublisher = eventPublisher;
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		super.setApplicationContext(applicationContext);
+		for (String profile : applicationContext.getEnvironment().getActiveProfiles()) {
+			if (profile.startsWith("dispatcher.")) {
+				this.dispatcher = profile.replaceAll("dispatcher\\.", "");
+				break;
+			}
+		}
+		this.eventPublisher = applicationContext;
 	}
 
 	/**

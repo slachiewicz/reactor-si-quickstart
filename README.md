@@ -22,3 +22,21 @@ __NOTE:__ *If using Java 8, you must be running with ea build 128 or later. Earl
 To run the Spring Integration components, fire up the app using the the `QuickStartApplication` class' Java main method, or by running it from the command line `mvn spring-boot:run`.
 
 Requires __-Dspring.profiles.active=reactor__ or __-Dspring.profiles.active=si__ to run with reactor or native SI TCP adapters respectively.
+
+Also requires one of the following profiles for the type of channel to be used downstream:
+
+- channel.simple
+- channel.direct
+- channel.ringBuffer
+- channel.threadPoolExecutor
+
+If using the `reactor` profile, one of the following profiles must be provided to determine the type of dispatcher within the TCP adapter itself:
+
+- dispatcher.sync
+- dispatcher.ringBuffer
+- dispatcher.threadPoolExecutor
+
+For example, provide the following to use the Reactor TCP adapter with a RingBuffer dispatcher and a simple Channel (likely the most performant combination):
+
+__-Dspring.profiles.active=reactor,dispatcher.ringBuffer,channel.simple__
+
