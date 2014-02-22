@@ -13,10 +13,26 @@
 	<task:executor id="threadPoolTaskExecutor" pool-size="8"/>
 
 	<!-- output channel that all components publish incoming messages to -->
-	<channel id="output">
-		<dispatcher task-executor="ringBufferTaskExecutor"/>
-		<!--dispatcher task-executor="workQueueTaskExecutor"/-->
-		<!--dispatcher task-executor="threadPoolTaskExecutor"/-->
-	</channel>
+	<beans:beans profile="channel.simple">
+		<beans:bean id="output" class="org.projectreactor.qs.integration.SimpleChannel">
+			<beans:constructor-arg ref="messageHandler"/>
+		</beans:bean>
+	</beans:beans>
 
+	<beans:beans profile="channel.direct">
+		<channel id="output"/>
+	</beans:beans>
+
+	<beans:beans profile="channel.ringBuffer">
+		<channel id="output">
+			<dispatcher task-executor="ringBufferTaskExecutor"/>
+		</channel>
+	</beans:beans>
+
+	<beans:beans profile="channel.threadPoolExecutor">
+		<channel id="output">
+			<dispatcher task-executor="threadPoolTaskExecutor"/>
+		</channel>
+	</beans:beans>
+	
 </beans:beans>
