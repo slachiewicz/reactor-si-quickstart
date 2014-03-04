@@ -40,3 +40,18 @@ For example, provide the following to use the Reactor TCP adapter with a RingBuf
 
 __-Dspring.profiles.active=reactor,dispatcher.ringBuffer,channel.simple__
 
+### Results
+
+Running on a 2.7GHz Intel quad-core i7 and Mac OS X 10.8.4 and JDK 1.7.0_21-b12, some example results look like this:
+
+Dispatcher | Channel | TCP | messages/sec
+-----------|---------|-----|-------------
+RingBuffer | Simple | Reactor | 1.91M
+RingBuffer | Direct | Reactor | 1.77M
+Synchronous | Direct | Reactor | 1.77M
+ThreadPoolExecutor | Direct | Reactor | 1.77M
+Synchronous | RingBuffer | Reactor | 1.38M
+ | Direct | SI | 474k
+ | Simple | SI | 537k
+ | RingBuffer | SI | 439k
+ | ThreadPoolExecutor | SI | 422k
